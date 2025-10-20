@@ -16,10 +16,12 @@ typedef struct
 
 int cmd_ls(char **args);
 int cmd_exit(char **args);
+int cmd_cd(char **args);
 
 command_t builtin_commands[] = {
     {"ls", cmd_ls},
     {"exit", cmd_exit},
+    {"cd", cmd_cd},
     {NULL, NULL}};
 
 int cmd_ls(char **args)
@@ -49,12 +51,29 @@ int cmd_ls(char **args)
   }
 
   closedir(dir);
-  return 0;
+  return 1;
 }
 
 int cmd_exit(char **args)
 {
-  exit(0);
+  return 0;
+}
+
+int cmd_cd(char **args)
+{
+  if (args[1] == NULL || args[2] != NULL)
+  {
+    fprintf(stderr, "An error has occurred\n");
+    return 1;
+  }
+  
+  if (chdir(args[1]) != 0)
+  {
+    fprintf(stderr, "An error has occurred\n");
+    return 1;
+  }
+  
+  return 1;
 }
 
 char **parse_line(char *line)
@@ -69,12 +88,16 @@ char **parse_line(char *line)
     exit(EXIT_FAILURE);
   }
 
-  token = strtok(line, " \t\r\n\a");
+  // Eliminar salto de línea al final
+  char *newline = strchr(line, '\n');
+  if (newline) *newline = '\0';
+  
+  token = strtok(line, " \t\r\a");
   while (token != NULL && position < MAX_ARGS - 1)
   {
     tokens[position] = token;
     position++;
-    token = strtok(NULL, " \t\r\n\a");
+    token = strtok(NULL, " \t\r\a");
   }
   tokens[position] = NULL;
 
@@ -85,7 +108,7 @@ int execute_builtin(char **args)
 {
   if (args[0] == NULL)
   {
-    return 1;
+    return 1; // Línea vacía, continuar
   }
 
   for (int i = 0; builtin_commands[i].name != NULL; i++)
@@ -140,7 +163,7 @@ int execute(char **args)
   return result;
 }
 
-void shell_loop()
+void shell_loop(FILE *input)
 {
   char *line = NULL;
   size_t bufsize = 0;
@@ -149,8 +172,16 @@ void shell_loop()
 
   do
   {
-    printf("wish> ");
-    getline(&line, &bufsize, stdin);
+    if (input == stdin)
+    {
+      printf("wish> ");
+    }
+    
+    if (getline(&line, &bufsize, input) == -1)
+    {
+      break; // EOF
+    }
+    
     args = parse_line(line);
     status = execute(args);
 
@@ -162,8 +193,29 @@ void shell_loop()
 
 int main(int argc, char **argv)
 {
-  shell_loop();
+  FILE *input = stdin;
+  
+  if (argc == 2)
+  {
+    input = fopen(argv[1], "r");
+    if (input == NULL)
+    {
+      fprintf(stderr, "An error has occurred\n");
+      exit(1);
+    }
+  }
+  else if (argc > 2)
+  {
+    fprintf(stderr, "An error has occurred\n");
+    exit(1);
+  }
+  
+  shell_loop(input);
+  
+  if (input != stdin)
+  {
+    fclose(input);
+  }
+  
   return EXIT_SUCCESS;
 }
-
-// https://www.youtube.com/watch?v=vgxWYYdwKLc
