@@ -1,5 +1,1 @@
-<<<<<<< Updated upstream
-ls: No such file or directory
-=======
-ls: no se puede acceder a '/no/such/file': No existe el archivo o el directorio
->>>>>>> Stashed changes
+ls: cannot access '/no/such/file': No such file or directory
